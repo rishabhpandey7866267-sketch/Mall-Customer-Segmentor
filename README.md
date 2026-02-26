@@ -1,2 +1,2 @@
 # Mall-Customer-Segmentor
-tinny project 
+tiny project 
