@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MallMind — Customer Segmentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:#08090c; --surface:#111318; --surface2:#181b22;
+  --border:rgba(255,255,255,0.08); --text:#eaedf2; --muted:#6b7280;
+  --accent:#a78bfa; --card-r:14px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+.app{display:flex;min-height:100vh}
+.sidebar{
+  width:220px;flex-shrink:0;background:var(--surface);
+  border-right:1px solid var(--border);padding:24px 16px;
+  display:flex;flex-direction:column;gap:6px;
+  position:sticky;top:0;height:100vh;
+}
+.logo{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;
+  margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+.logo span{color:var(--accent)}
+.nav-btn{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  cursor:pointer;font-size:13.5px;color:var(--muted);background:none;border:none;
+  width:100%;text-align:left;transition:all .18s;font-family:'DM Sans',sans-serif;
+}
+.nav-btn:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.nav-btn.active{background:rgba(167,139,250,.13);color:var(--accent)}
+.main{flex:1;padding:36px 40px;overflow-y:auto}
+
+.page{display:none}.page.active{display:block}
+.page-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;letter-spacing:-.5px;margin-bottom:5px}
+.page-sub{color:var(--muted);font-size:13px;margin-bottom:26px}
+
+/* status banner */
+.status-bar{
+  display:flex;align-items:center;gap:10px;padding:10px 16px;
+  border-radius:10px;margin-bottom:26px;font-size:12.5px;
+  border:1px solid var(--border);background:var(--surface2);
+}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-dot.live{background:#22c55e;box-shadow:0 0 6px #22c55e}
+.status-dot.demo{background:#f97316;box-shadow:0 0 6px #f97316}
+.status-bar code{background:rgba(255,255,255,.09);padding:1px 6px;border-radius:4px;font-size:11.5px;color:var(--text)}
+
+/* stat cards */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--card-r);
+  padding:18px 20px;position:relative;overflow:hidden;transition:transform .18s}
+.stat-card:hover{transform:translateY(-2px)}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--glow,var(--accent))}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.stat-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:3px}
+
+.sec-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:14px}
+
+/* cluster grid */
+.clusters-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px}
+.cluster-card{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--card-r);padding:16px 13px;
+  transition:all .2s;position:relative;overflow:hidden;
+}
+.cluster-card:hover{transform:translateY(-3px)}
+.cluster-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--c,#a78bfa)}
+.c-emoji{font-size:26px;margin-bottom:8px}
+.c-name{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;margin-bottom:6px;line-height:1.3}
+.c-count{font-size:22px;font-weight:700}
+.c-clabel{font-size:10px;color:var(--muted);margin-bottom:8px}
+.c-stats{display:flex;flex-direction:column;gap:3px}
+.cs-row{font-size:10.5px;color:var(--muted);display:flex;justify-content:space-between}
+.cs-row span:last-child{color:var(--text)}
+
+/* charts */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:28px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--card-r);padding:22px}
+.chart-card h3{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:16px}
+.chart-wrap{position:relative;width:100%;height:240px}
+.chart-wrap canvas{display:block;width:100%!important;height:240px!important}
+
+/* predict */
+.predict-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--card-r);padding:26px;margin-bottom:26px}
+.slider-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:18px}
+.field label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.field .val{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-top:2px}
+.field input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;margin-top:6px}
+.predict-btn{
+  width:100%;background:var(--accent);color:#07020f;border:none;border-radius:10px;
+  padding:12px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;transition:all .18s}
+.predict-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.result-box{
+  margin-top:18px;padding:18px 22px;border-radius:12px;
+  border:1px solid var(--rc,var(--border));display:flex;align-items:center;gap:18px;
+  background:rgba(255,255,255,.02);animation:fadeIn .35s ease}
+.res-emoji{font-size:38px}
+.res-name{font-family:'Syne',sans-serif;font-size:18px;font-weight:800}
+.res-desc{font-size:12px;color:var(--muted);margin-top:3px}
+.res-badge{margin-left:auto;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
+
+/* examples */
+.examples-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.ex-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--card-r);padding:16px;cursor:pointer;transition:all .18s;position:relative}
+.ex-card:hover{border-color:var(--c,#a78bfa);transform:translateY(-2px)}
+.ex-card::after{content:'';display:block;height:2px;background:var(--c,#a78bfa);border-radius:2px;margin-top:10px}
+
+/* table */
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--card-r);overflow:hidden}
+.filter-row{display:flex;gap:7px;flex-wrap:wrap;padding:14px 22px;border-bottom:1px solid var(--border)}
+.filter-btn{padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11.5px;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
+.filter-btn:hover,.filter-btn.active{color:var(--text);border-color:var(--accent)}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{padding:10px 16px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:500}
+.tbl td{padding:10px 16px;border-bottom:1px solid var(--border)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:600}
+.loading{text-align:center;padding:50px;color:var(--muted);font-size:13px}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <div class="logo">Mall<span>Mind</span></div>
+  <button class="nav-btn active" onclick="showPage('dashboard',this)">
+    <span style="font-size:17px;width:22px;text-align:center">📊</span> Dashboard
+  </button>
+  <button class="nav-btn" onclick="showPage('predict',this)">
+    <span style="font-size:17px;width:22px;text-align:center">🔮</span> Predict
+  </button>
+  <button class="nav-btn" onclick="showPage('customers',this)">
+    <span style="font-size:17px;width:22px;text-align:center">👥</span> Customers
+  </button>
+</aside>
+
+<main class="main">
+
+  <!-- ══ DASHBOARD ══ -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-title">Customer Segments</div>
+    <div class="page-sub">KMeans clustering · 5 segments · Mall Customers dataset</div>
+
+    <div class="status-bar" id="status-bar">
+      <div class="status-dot demo" id="status-dot"></div>
+      <span id="status-text">Connecting to API…</span>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card" style="--glow:#a78bfa">
+        <div class="stat-label">Total Customers</div>
+        <div class="stat-val" id="s-total">—</div>
+        <div class="stat-sub">Mall dataset</div>
+      </div>
+      <div class="stat-card" style="--glow:#34d399">
+        <div class="stat-label">Avg. Annual Income</div>
+        <div class="stat-val" id="s-income">—</div>
+        <div class="stat-sub">USD thousands</div>
+      </div>
+      <div class="stat-card" style="--glow:#f97316">
+        <div class="stat-label">Avg. Spending Score</div>
+        <div class="stat-val" id="s-spend">—</div>
+        <div class="stat-sub">out of 100</div>
+      </div>
+      <div class="stat-card" style="--glow:#ef4444">
+        <div class="stat-label">Avg. Age</div>
+        <div class="stat-val" id="s-age">—</div>
+        <div class="stat-sub">years</div>
+      </div>
+    </div>
+
+    <div class="sec-title">Cluster Overview</div>
+    <div class="clusters-grid" id="cluster-grid">
+      <div style="grid-column:1/-1" class="loading"><span class="spinner"></span>Loading clusters…</div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>Income vs Spending · 2D Clusters</h3>
+        <div class="chart-wrap"><canvas id="scatter2d" width="400" height="240"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Cluster Size Distribution</h3>
+        <div class="chart-wrap"><canvas id="barChart" width="400" height="240"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PREDICT ══ -->
+  <div id="page-predict" class="page">
+    <div class="page-title">Predict Segment</div>
+    <div class="page-sub">Enter customer details to find their segment</div>
+    <div class="predict-card">
+      <div class="slider-grid">
+        <div class="field">
+          <label>Age</label>
+          <div class="val" id="age-v">30</div>
+          <input type="range" id="inp-age" min="18" max="70" value="30"
+            oninput="document.getElementById('age-v').textContent=this.value">
+        </div>
+        <div class="field">
+          <label>Annual Income (k$)</label>
+          <div class="val" id="inc-v">60</div>
+          <input type="range" id="inp-income" min="15" max="140" value="60"
+            oninput="document.getElementById('inc-v').textContent=this.value">
+        </div>
+        <div class="field">
+          <label>Spending Score</label>
+          <div class="val" id="sp-v">50</div>
+          <input type="range" id="inp-spend" min="1" max="100" value="50"
+            oninput="document.getElementById('sp-v').textContent=this.value">
+        </div>
+      </div>
+      <button class="predict-btn" onclick="predictSegment()">Predict Segment →</button>
+      <div id="result-area"></div>
+    </div>
+
+    <div class="sec-title">Quick Examples</div>
+    <div class="examples-grid">
+      <div class="ex-card" style="--c:#ef4444" onclick="setSliders(25,120,85)">
+        <div style="font-size:24px;margin-bottom:8px">💎</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700">Young High Earner</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Age 25 · $120k · Score 85</div>
+      </div>
+      <div class="ex-card" style="--c:#7c3aed" onclick="setSliders(50,60,40)">
+        <div style="font-size:24px;margin-bottom:8px">🛡️</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700">Middle-Age Careful</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Age 50 · $60k · Score 40</div>
+      </div>
+      <div class="ex-card" style="--c:#f97316" onclick="setSliders(22,20,78)">
+        <div style="font-size:24px;margin-bottom:8px">💰</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700">Budget Spender</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Age 22 · $20k · Score 78</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CUSTOMERS ══ -->
+  <div id="page-customers" class="page">
+    <div class="page-title">All Customers</div>
+    <div class="page-sub">Browse and filter by segment</div>
+    <div class="table-card">
+      <div class="filter-row" id="filter-row">
+        <button class="filter-btn active" onclick="filterTable(null,this)">All</button>
+      </div>
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>ID</th><th>Gender</th><th>Age</th>
+            <th>Income (k$)</th><th>Spending Score</th><th>Segment</th>
+          </tr>
+        </thead>
+        <tbody id="customer-tbody">
+          <tr><td colspan="6" class="loading"><span class="spinner"></span>Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+  crossorigin="anonymous"></script>
+
+<script>
+/* ─────────────────────────────────────────────────────────
+   KEY FIX: API_BASE is EMPTY STRING → relative URL
+   When served by FastAPI at /app, fetch('/clusters') hits
+   the same server — no CORS, no localhost hardcoding.
+   ───────────────────────────────────────────────────────── */
+const API_BASE = '';   // ← do NOT change this to localhost
+
+const CLUSTERS = [
+  { id:0, name:'Careful Spenders',   color:'#7c3aed', emoji:'🛡️', desc:'Middle-aged, moderate income, low spending. Cautious buyers.' },
+  { id:1, name:'High-Value Targets', color:'#ef4444', emoji:'💎', desc:'Young, high income, high spending. Premium shoppers.' },
+  { id:2, name:'Budget Conscious',   color:'#f97316', emoji:'💰', desc:'Young, low income, high spending. Impulsive on a budget.' },
+  { id:3, name:'Conservative Elite', color:'#22c55e', emoji:'🎯', desc:'Older, high income, low spending. Selective quality-focused.' },
+  { id:4, name:'Average Joes',       color:'#3b82f6', emoji:'🏪', desc:'Average on all metrics. Mainstream shoppers.' },
+];
+
+/* ── Demo fallback (only used if API truly unreachable) ── */
+const DEMO_CLUSTERS = [
+  { cluster_id:0, name:'Careful Spenders',   color:'#7c3aed', emoji:'🛡️', count:39, avg_age:56, avg_income:54, avg_spending:49 },
+  { cluster_id:1, name:'High-Value Targets', color:'#ef4444', emoji:'💎', count:35, avg_age:27, avg_income:87, avg_spending:82 },
+  { cluster_id:2, name:'Budget Conscious',   color:'#f97316', emoji:'💰', count:22, avg_age:25, avg_income:26, avg_spending:79 },
+  { cluster_id:3, name:'Conservative Elite', color:'#22c55e', emoji:'🎯', count:38, avg_age:43, avg_income:86, avg_spending:17 },
+  { cluster_id:4, name:'Average Joes',       color:'#3b82f6', emoji:'🏪', count:66, avg_age:33, avg_income:55, avg_spending:50 },
+];
+const DEMO_STATS = { total_customers:200, age_range:{mean:38.9}, income_range:{mean:60.6}, spending_range:{mean:50.2} };
+
+function rand(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function buildDemoCustomers(){
+  const pools=[
+    {age:[45,70],inc:[40,70], sp:[10,50],label:0,count:39},
+    {age:[18,35],inc:[70,140],sp:[60,99],label:1,count:35},
+    {age:[18,30],inc:[15,40], sp:[60,99],label:2,count:22},
+    {age:[35,65],inc:[70,140],sp:[1,40], label:3,count:38},
+    {age:[25,50],inc:[40,80], sp:[35,65],label:4,count:66},
+  ];
+  const rows=[];let id=1;
+  pools.forEach(p=>{
+    for(let i=0;i<p.count;i++){
+      rows.push({
+        CustomerID:id++,
+        Gender:['Male','Female'][Math.round(Math.random())],
+        Age:rand(p.age[0],p.age[1]),
+        'Annual Income (k$)':rand(p.inc[0],p.inc[1]),
+        'Spending Score (1-100)':rand(p.sp[0],p.sp[1]),
+        label:p.label, cluster_name:CLUSTERS[p.label].name, color:CLUSTERS[p.label].color
+      });
+    }
+  });
+  return rows;
+}
+const DEMO_CUSTOMERS = buildDemoCustomers();
+
+/* ── State ── */
+let clusterData=[], customerData=[], statsData={};
+let customersLoaded=false, chartScatter=null, chartBar=null;
+let isLive = false;
+
+/* ── API helper ── */
+async function apiFetch(path){
+  const r = await fetch(API_BASE + path, { signal: AbortSignal.timeout(3000) });
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+/* ── Status banner ── */
+function setStatus(live){
+  isLive = live;
+  const dot  = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  if(live){
+    dot.className = 'status-dot live';
+    text.innerHTML = '✅ <strong>Live data</strong> — connected to FastAPI at <code>/clusters</code>, <code>/stats</code>';
+  } else {
+    dot.className = 'status-dot demo';
+    text.innerHTML = '🟠 <strong>Demo mode</strong> — API not reachable. Run <code>uvicorn main:app --reload</code> then open <code>http://localhost:8000/app</code>';
+  }
+}
+
+/* ── Navigation ── */
+function showPage(id, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='customers' && !customersLoaded) loadCustomers();
+}
+
+/* ── Init ── */
+async function init(){
+  let liveCluster = false, liveStat = false;
+
+  try {
+    clusterData = await apiFetch('/clusters');
+    liveCluster = true;
+  } catch { clusterData = DEMO_CLUSTERS; }
+
+  try {
+    statsData = await apiFetch('/stats');
+    liveStat = true;
+  } catch { statsData = DEMO_STATS; }
+
+  setStatus(liveCluster && liveStat);
+  renderStats();
+  renderClusterGrid();
+  if(typeof Chart !== 'undefined'){
+    renderCharts();
+  }
+}
+
+/* ── Stats ── */
+function renderStats(){
+  document.getElementById('s-total').textContent  = statsData.total_customers;
+  document.getElementById('s-income').textContent = '$' + statsData.income_range.mean + 'k';
+  document.getElementById('s-spend').textContent  = statsData.spending_range.mean;
+  document.getElementById('s-age').textContent    = statsData.age_range.mean;
+}
+
+/* ── Cluster grid ── */
+function renderClusterGrid(){
+  document.getElementById('cluster-grid').innerHTML = clusterData.map(c=>`
+    <div class="cluster-card" style="--c:${c.color}">
+      <div class="c-emoji">${c.emoji}</div>
+      <div class="c-name">${c.name}</div>
+      <div class="c-count" style="color:${c.color}">${c.count}</div>
+      <div class="c-clabel">customers</div>
+      <div class="c-stats">
+        <div class="cs-row"><span>Avg Age</span><span>${c.avg_age}</span></div>
+        <div class="cs-row"><span>Income</span><span>$${c.avg_income}k</span></div>
+        <div class="cs-row"><span>Spend</span><span>${c.avg_spending}</span></div>
+      </div>
+    </div>`).join('');
+}
+
+/* ── Charts ── */
+function jitter(v,s){ return v+(Math.random()-.5)*2*s; }
+function renderCharts(){
+  const GRID={color:'rgba(255,255,255,0.04)'};
+  const TICK={color:'#6b7280',font:{size:10}};
+
+  if(chartScatter){ chartScatter.destroy(); }
+  chartScatter = new Chart(document.getElementById('scatter2d').getContext('2d'),{
+    type:'scatter',
+    data:{
+      datasets: clusterData.map(c=>({
+        label:c.name,
+        data:Array.from({length:c.count},()=>({x:jitter(c.avg_income,14),y:jitter(c.avg_spending,14)})),
+        backgroundColor:c.color+'bb', pointRadius:5,
+      }))
+    },
+    options:{
+      responsive:false, animation:false,
+      plugins:{legend:{labels:{color:'#9ca3af',font:{family:'DM Sans',size:10},boxWidth:10,padding:10}}},
+      scales:{
+        x:{title:{display:true,text:'Annual Income (k$)',color:'#6b7280',font:{size:11}},ticks:TICK,grid:GRID},
+        y:{title:{display:true,text:'Spending Score',color:'#6b7280',font:{size:11}},ticks:TICK,grid:GRID}
+      }
+    }
+  });
+
+  if(chartBar){ chartBar.destroy(); }
+  chartBar = new Chart(document.getElementById('barChart').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:clusterData.map(c=>c.name),
+      datasets:[{
+        label:'Customers',
+        data:clusterData.map(c=>c.count),
+        backgroundColor:clusterData.map(c=>c.color+'bb'),
+        borderRadius:6, borderSkipped:false,
+      }]
+    },
+    options:{
+      responsive:false, animation:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#6b7280',font:{size:9},maxRotation:30},grid:{display:false}},
+        y:{ticks:TICK,grid:GRID}
+      }
+    }
+  });
+}
+
+/* ── Predict ── */
+const CENTROIDS=[[56,54,49],[27,87,82],[25,26,79],[43,86,17],[33,55,50]];
+function localPredict(age,inc,sp){
+  let best=0,bestD=Infinity;
+  CENTROIDS.forEach(([ca,ci,cs],i)=>{
+    const d=Math.sqrt((age-ca)**2+(inc-ci)**2+(sp-cs)**2);
+    if(d<bestD){bestD=d;best=i;}
+  });
+  return best;
+}
+
+async function predictSegment(){
+  const age=+document.getElementById('inp-age').value;
+  const inc=+document.getElementById('inp-income').value;
+  const sp =+document.getElementById('inp-spend').value;
+  let result;
+  try{
+    result = await fetch(API_BASE+'/predict',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({age, annual_income_k:inc, spending_score:sp}),
+      signal:AbortSignal.timeout(3000)
+    }).then(r=>r.json());
+  } catch {
+    const cid=localPredict(age,inc,sp);
+    const c=CLUSTERS[cid];
+    result={cluster_id:cid,name:c.name,description:c.desc,color:c.color,emoji:c.emoji};
+  }
+  document.getElementById('result-area').innerHTML=`
+    <div class="result-box" style="--rc:${result.color};border-color:${result.color}55">
+      <div class="res-emoji">${result.emoji}</div>
+      <div>
+        <div class="res-name" style="color:${result.color}">${result.name}</div>
+        <div class="res-desc">${result.description}</div>
+      </div>
+      <div class="res-badge" style="background:${result.color}">Cluster ${result.cluster_id}</div>
+    </div>`;
+}
+
+function setSliders(age,inc,sp){
+  document.getElementById('inp-age').value=age;
+  document.getElementById('inp-income').value=inc;
+  document.getElementById('inp-spend').value=sp;
+  document.getElementById('age-v').textContent=age;
+  document.getElementById('inc-v').textContent=inc;
+  document.getElementById('sp-v').textContent=sp;
+}
+
+/* ── Customers ── */
+async function loadCustomers(){
+  customersLoaded=true;
+  try{
+    const data=await apiFetch('/customers');
+    customerData=Array.isArray(data)?data:data.customers;
+  } catch { customerData=DEMO_CUSTOMERS; }
+
+  const frow=document.getElementById('filter-row');
+  CLUSTERS.forEach(c=>{
+    const btn=document.createElement('button');
+    btn.className='filter-btn';
+    btn.textContent=c.emoji+' '+c.name;
+    btn.onclick=()=>filterTable(c.id,btn);
+    frow.appendChild(btn);
+  });
+  renderTable(customerData);
+}
+
+function filterTable(clId,btn){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable(clId===null?customerData:customerData.filter(r=>r.label===clId));
+}
+
+function renderTable(rows){
+  const tbody=document.getElementById('customer-tbody');
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="6" class="loading">No customers.</td></tr>';return;}
+  tbody.innerHTML=rows.slice(0,150).map(r=>`
+    <tr>
+      <td style="color:var(--muted)">#${r.CustomerID}</td>
+      <td>${r.Gender}</td>
+      <td>${r.Age}</td>
+      <td>$${r['Annual Income (k$)']}k</td>
+      <td>${r['Spending Score (1-100)']}</td>
+      <td><span class="badge" style="background:${r.color}22;color:${r.color}">
+        ${CLUSTERS[r.label].emoji} ${r.cluster_name}</span></td>
+    </tr>`).join('');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
